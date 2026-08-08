@@ -5,7 +5,7 @@ const app = express();
 app.use(express.json());
 
 //tesing email
-const user = [{ email: "kgupta7827@gmail.com", name: "Kashish Gupta" }];
+const user = [{ email: "test@gmail.com", name: "Kashish Gupta" }];
 
 //sample route with issues to trace the issue on the app
 
