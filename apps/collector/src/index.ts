@@ -21,7 +21,7 @@ app.post("/v1/traces", (req: Request, res: Response) => {
       });
     }
 
-    console.log(`\n📦 [OTLP Receiver] Received trace batch with ${resourceSpans.length} resource spans.`);
+    console.log(`\n [OTLP Receiver] Received trace batch with ${resourceSpans.length} resource spans.`);
 
     // Iterate through incoming spans and extract telemetry details
     for (const resourceSpan of resourceSpans) {
@@ -44,7 +44,7 @@ app.post("/v1/traces", (req: Request, res: Response) => {
           const durationNs = BigInt(span.endTimeUnixNano || 0) - BigInt(span.startTimeUnixNano || 0);
 
           console.log(
-            `  🔍 Service: [${serviceName}] | Span: "${name}" | TraceID: ${traceId} | Duration: ${Number(durationNs) / 1e6}ms`
+            `   Service: [${serviceName}] | Span: "${name}" | TraceID: ${traceId} | Duration: ${Number(durationNs) / 1e6}ms`
           );
 
           // If span contains an error, flag it for AI Root Cause Analysis

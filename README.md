@@ -22,3 +22,31 @@ Zerops private VXLAN networking keeps internal traffic ultra-fast and secure. Yo
 
 4. zerotrace-db (Managed PostgreSQL on Zerops): Persists spans, traces, system metrics, and diagnostic logs.
 
+3+ Service Architecture on Zerops
+Zerops private VXLAN networking keeps internal traffic ultra-fast and secure. Your services will communicate privately using hostnames:
+
+                            [ Public Internet ]
+                                    │
+                            (Zerops L7 Router)
+                                    │
+                        ┌──────────┴──────────┐
+                        │                     │
+            ┌────────────▼──────────┐ ┌────────▼────────────────┐
+            │ zerotrace-frontend    │ │ target-app-service      │
+            │ (Next.js Dashboard)   │ │ (Sample Microservice)   │
+            └────────────┬──────────┘ └────────┬────────────────┘
+                        │                     │ (OTLP Traces)
+                        │ (Private HTTP)      │
+                        ▼                     │
+            ┌──────────────────────────────────▼────────────────┐
+            │ zerotrace-collector (Go Backend Engine)          │
+            │ - OTLP Trace/Metric Receiver                      │
+            │ - Correlates Traces + Container Metrics + Logs    │
+            └────────────┬──────────────────────────────────────┘
+                        │
+                ┌─────────┴─────────────────────┐
+                │                               │
+        ┌────────▼────────────────┐   ┌──────────▼───────────────┐
+        │ zerotrace-ai-engine     │   │ zerotrace-db             │
+        │ (Python/Node RCA Agent) │   │ (PostgreSQL on Zerops)   │
+        └─────────────────────────┘   └──────────────────────────┘
