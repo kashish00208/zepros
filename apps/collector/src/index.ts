@@ -4,6 +4,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(express.json({ limit: "10mb" }));
+const errorSpansToAnalyze: any[] = [];
 
 // health check endpoint for Zerops health monitoring
 app.get("/health", (_req: Request, res: Response) => {
@@ -16,41 +17,73 @@ app.post("/v1/traces", (req: Request, res: Response) => {
     const { resourceSpans } = req.body;
 
     if (!resourceSpans || !Array.isArray(resourceSpans)) {
-      return res.status(400).json({ 
-        error: "Invalid OTLP trace payload. Expected 'resourceSpans' array." 
+      return res.status(400).json({
+        error: "Invalid OTLP trace payload. Expected 'resourceSpans' array.",
       });
     }
 
-    console.log(`\n [OTLP Receiver] Received trace batch with ${resourceSpans.length} resource spans.`);
+    console.log(
+      `\n [OTLP Receiver] Received trace batch with ${resourceSpans.length} resource spans.`,
+    );
 
     // Iterate through incoming spans and extract telemetry details
     for (const resourceSpan of resourceSpans) {
       const attributes = resourceSpan.resource?.attributes || [];
       const serviceNameAttr = attributes.find(
-        (attr: any) => attr.key === "service.name"
+        (attr: any) => attr.key === "service.name",
       );
-      const serviceName = serviceNameAttr?.value?.stringValue || "unknown-service";
+      const serviceName =
+        serviceNameAttr?.value?.stringValue || "unknown-service";
 
-      const scopeSpans = resourceSpan.scopeSpans || resourceSpan.instrumentationLibrarySpans || [];
+      const scopeSpans =
+        resourceSpan.scopeSpans ||
+        resourceSpan.instrumentationLibrarySpans ||
+        [];
 
       for (const scopeSpan of scopeSpans) {
         const spans = scopeSpan.spans || [];
-        
+
         for (const span of spans) {
           const traceId = span.traceId;
           const spanId = span.spanId;
           const name = span.name;
           const statusCode = span.status?.code; // 1 = UNSET, 2 = OK, 3 = ERROR
-          const durationNs = BigInt(span.endTimeUnixNano || 0) - BigInt(span.startTimeUnixNano || 0);
+          const durationNs =
+            BigInt(span.endTimeUnixNano || 0) -
+            BigInt(span.startTimeUnixNano || 0);
 
           console.log(
-            `   Service: [${serviceName}] | Span: "${name}" | TraceID: ${traceId} | Duration: ${Number(durationNs) / 1e6}ms`
+            `   Service: [${serviceName}] | Span: "${name}" | TraceID: ${traceId} | Duration: ${Number(durationNs) / 1e6}ms`,
           );
 
-          // If span contains an error, flag it for AI Root Cause Analysis
+
+          // ... inside your nested loops:
           if (statusCode === 3 || statusCode === "STATUS_CODE_ERROR") {
-            console.error(`ERROR DETECTED in span "${name}" (TraceID: ${traceId})`);
-            // TODO: Pass this trace & error logs to your zerotrace-ai-engine
+            console.error(
+              `🚨 [ERROR DETECTED] Service: ${serviceName} | Span: "${name}" | TraceID: ${traceId}`,
+            );
+
+            // Extract error message from attributes or status message
+            const errorMessage =
+              span.status?.message ||
+              attributes?.find((a: any) => a.key === "error.message")?.value
+                ?.stringValue ||
+              "Unhandled Application Error";
+
+            // Push structured error context to the array
+            errorSpansToAnalyze.push({
+              traceId,
+              spanId,
+              parentSpanId: span.parentSpanId || null,
+              name,
+              serviceName,
+              statusCode,
+              durationMs: Number(durationNs) / 1e6,
+              errorMessage,
+              timestamp: new Date(
+                Number(BigInt(span.startTimeUnixNano || 0) / BigInt(1e6)),
+              ).toISOString(),
+            });
           }
         }
       }
@@ -59,11 +92,15 @@ app.post("/v1/traces", (req: Request, res: Response) => {
     return res.status(200).json({ partialSuccess: {} });
   } catch (err: any) {
     console.error("❌ Error processing incoming trace:", err.message);
-    return res.status(500).json({ error: "Internal server error parsing spans" });
+    return res
+      .status(500)
+      .json({ error: "Internal server error parsing spans" });
   }
 });
 
 app.listen(PORT, () => {
   console.log(` ZeroTrace Collector running on http://localhost:${PORT}`);
-  console.log(` Listening for OTLP HTTP traces at http://localhost:${PORT}/v1/traces`);
+  console.log(
+    ` Listening for OTLP HTTP traces at http://localhost:${PORT}/v1/traces`,
+  );
 });

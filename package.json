@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "concurrently -n \"COLLECTOR,TARGET,AI,FRONTEND\" -c \"blue,yellow,magenta,cyan\" \"npm run dev:collector\" \"npm run dev:target\" \"npm run dev:ai\" \"npm run dev:frontend\"",
     "dev:collector": "npm run dev --workspace=apps/collector",
-    "dev:target": "npm run dev --workspace=apps/target-app",
+    "dev:target": "npm run dev --workspace=apps/target",
     "dev:ai": "npm run dev --workspace=apps/ai-engine",
     "dev:frontend": "npm run dev --workspace=apps/frontend",
     "build:collector": "npm run build --workspace=apps/collector",
