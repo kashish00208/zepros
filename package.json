@@ -19,7 +19,8 @@
     "install:all": "npm install"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "tsx": "^4.23.11"
   },
   "dependencies": {
     "nodemon": "^3.1.14",
