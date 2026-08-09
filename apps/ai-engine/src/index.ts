@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import cors from "cors";
 import Groq from "groq-sdk";
 import dotenv from 'dotenv'
 
@@ -7,6 +8,8 @@ dotenv.config()
 const port = process.env.PORT || 5000;
 const app = express();
 
+app.use(cors());
+app.options("*", cors());
 app.use(express.json());
 
 const groq = new Groq({

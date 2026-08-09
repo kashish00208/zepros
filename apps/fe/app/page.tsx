@@ -33,17 +33,32 @@ export default function ZeroTraceDashboard() {
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  const COLLECTOR_URL ='http://collector:8080';
-  const AI_URL = 'http://ai-engine:5000';
+  const getApiBaseUrl = (envValue: string | undefined, fallbackPort: string) => {
+    if (envValue && envValue.trim()) return envValue.replace(/\/$/, '');
+
+    if (typeof window !== 'undefined') {
+      return `http://${window.location.hostname}:${fallbackPort}`;
+    }
+
+    return `http://localhost:${fallbackPort}`;
+  };
+
+  const COLLECTOR_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_COLLECTOR_URL, '8080');
+  const AI_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_AI_URL, '5000');
 
   const fetchTraces = async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch(`http://localhost:8080/v1/traces`);
+      const res = await fetch(`${COLLECTOR_URL}/api/traces`);
+      if (!res.ok) {
+        throw new Error(`Collector request failed with ${res.status}`);
+      }
+
       const data = await res.json();
-      setTraces(data);
+      setTraces(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Collector link pending...', err);
+      setTraces([]);
     } finally {
       setTimeout(() => setIsRefreshing(false), 400);
     }
@@ -61,15 +76,28 @@ export default function ZeroTraceDashboard() {
     setAiAnalysis('');
 
     try {
-      const res = await fetch(`http://localhost:8080/v1/traces`, {
+      const res = await fetch(`${AI_URL}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trace }),
       });
+
+      if (!res.ok) {
+        throw new Error(`AI request failed with ${res.status}`);
+      }
+
       const data = await res.json();
-      setAiAnalysis(data.analysis || data.message || 'Analysis complete with no issues detected.');
+      const analysisText =
+        typeof data.analysis === 'string'
+          ? data.analysis
+          : data.analysis && typeof data.analysis === 'object'
+            ? JSON.stringify(data.analysis, null, 2)
+            : data.message || 'Analysis complete with no issues detected.';
+
+      setAiAnalysis(analysisText);
     } catch (err) {
-      setAiAnalysis('Failed to contact ZeroTrace AI Engine. Ensure service endpoint is reachable.');
+      console.error('AI analysis request failed', err);
+      setAiAnalysis('Failed to contact ZeroTrace AI Engine. Ensure the AI service endpoint is reachable.');
     } finally {
       setLoadingAi(false);
     }
@@ -84,7 +112,7 @@ export default function ZeroTraceDashboard() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-cyan-500/20 selection:text-cyan-200">
       {/* Background Subtle Mesh */}
-      <div className="fixed inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25 pointer-events-none" />
+      <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,#18181b_1px,transparent_1px),linear-gradient(to_bottom,#18181b_1px,transparent_1px)] bg-size-[4rem_4rem] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
@@ -301,7 +329,7 @@ export default function ZeroTraceDashboard() {
                 )}
               </div>
 
-              <div className="rounded-lg border border-zinc-800/80 bg-zinc-950 p-4 min-h-[120px]">
+              <div className="min-h-30 rounded-lg border border-zinc-800/80 bg-zinc-950 p-4">
                 {loadingAi ? (
                   <div className="flex h-24 items-center justify-center gap-2 text-sm text-zinc-400">
                     <RefreshCw className="h-4 w-4 animate-spin text-cyan-400" />
