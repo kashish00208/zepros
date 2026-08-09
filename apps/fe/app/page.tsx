@@ -119,9 +119,7 @@ export default function ZeroTraceDashboard() {
         <header className="mb-8 flex flex-col justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-6 backdrop-blur-md md:flex-row md:items-center">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
-                <Activity className="h-4 w-4" />
-              </div>
+             
               <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">ZeroTrace Platform</span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Live Observability & RCA</h1>
