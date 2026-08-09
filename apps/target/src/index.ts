@@ -58,7 +58,7 @@ app.post("/api/signup", async (req: Request, res: Response) => {
       user: { email, name },
     });
   } catch (err: any) {
-    console.error(`❌ [SignUp Failed]: ${err.message}`);
+    console.error(` [SignUp Failed]: ${err.message}`);
 
     return res.status(500).json({
       error: "Signup failed",

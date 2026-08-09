@@ -6,23 +6,25 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "concurrently -n \"COLLECTOR,TARGET,AI,FRONTEND\" -c \"blue,yellow,magenta,cyan\" \"npm run dev:collector\" \"npm run dev:target\" \"npm run dev:ai\" \"npm run dev:frontend\"",
+    "dev": "concurrently -n \"COLLECTOR,TARGET,AI,fe\" -c \"blue,yellow,magenta,cyan\" \"npm run dev:collector\" \"npm run dev:target\" \"npm run dev:ai\" \"npm run dev:fe\"",
     "dev:collector": "npm run dev --workspace=apps/collector",
     "dev:target": "npm run dev --workspace=apps/target",
     "dev:ai": "npm run dev --workspace=apps/ai-engine",
-    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:fe": "npm run dev --workspace=apps/fe",
     "build:collector": "npm run build --workspace=apps/collector",
     "build:target": "npm run build --workspace=apps/target-app",
     "build:ai": "npm run build --workspace=apps/ai-engine",
-    "build:frontend": "npm run build --workspace=apps/frontend",
-    "build:all": "npm run build:collector && npm run build:target && npm run build:ai && npm run build:frontend",
+    "build:frontend": "npm run build --workspace=apps/fe",
+    "build:all": "npm run build:collector && npm run build:target && npm run build:ai && npm run build:fe",
     "install:all": "npm install"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "concurrently": "^9.1.2",
     "tsx": "^4.23.11"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "groq-sdk": "^1.5.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2"

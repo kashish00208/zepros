@@ -9,7 +9,6 @@ const app = express();
 
 app.use(express.json());
 
-// Initialize Groq SDK with your environment variable
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
@@ -59,7 +58,7 @@ app.post("/api/analyze", async (req: Request, res: Response) => {
         },
       ],
       model: "llama-3.1-8b-instant",
-      response_format: { type: "json_object" }, // Guarantees JSON response
+      response_format: { type: "json_object" }, 
     });
 
     const reply = response.choices?.[0]?.message?.content || "{}";

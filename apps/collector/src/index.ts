@@ -1,21 +1,28 @@
 import express, { Request, Response } from "express";
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 
-// health check endpoint for Zerops health monitoring
+// In-memory store for traces served to frontend
+const traceStore: any[] = [];
+
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ status: "ok", service: "zerotrace-collector" });
 });
 
-// Standard OpenTelemetry OTLP/HTTP Traces Endpoint
+// Endpoint for Frontend to query collected traces
+app.get("/api/traces", (_req: Request, res: Response) => {
+  res.status(200).json(traceStore);
+});
+
+// OTLP Traces Receiver Endpoint
 app.post("/v1/traces", (req: Request, res: Response) => {
   try {
     const { resourceSpans } = req.body;
-
-    console.log(resourceSpans)
 
     if (!resourceSpans || !Array.isArray(resourceSpans)) {
       return res.status(400).json({
@@ -25,23 +32,12 @@ app.post("/v1/traces", (req: Request, res: Response) => {
 
     const errorSpansToAnalyze: any[] = [];
 
-    console.log(
-      `\n [OTLP Receiver] Received trace batch with ${resourceSpans.length} resource spans.`,
-    );
-
-    // Iterate through incoming spans and extract telemetry details
     for (const resourceSpan of resourceSpans) {
       const attributes = resourceSpan.resource?.attributes || [];
-      const serviceNameAttr = attributes.find(
-        (attr: any) => attr.key === "service.name",
-      );
-      const serviceName =
-        serviceNameAttr?.value?.stringValue || "unknown-service";
+      const serviceNameAttr = attributes.find((attr: any) => attr.key === "service.name");
+      const serviceName = serviceNameAttr?.value?.stringValue || "unknown-service";
 
-      const scopeSpans =
-        resourceSpan.scopeSpans ||
-        resourceSpan.instrumentationLibrarySpans ||
-        [];
+      const scopeSpans = resourceSpan.scopeSpans || resourceSpan.instrumentationLibrarySpans || [];
 
       for (const scopeSpan of scopeSpans) {
         const spans = scopeSpan.spans || [];
@@ -50,31 +46,34 @@ app.post("/v1/traces", (req: Request, res: Response) => {
           const traceId = span.traceId;
           const spanId = span.spanId;
           const name = span.name;
-          const statusCode = span.status?.code; 
-          const durationNs =
-            BigInt(span.endTimeUnixNano || 0) -
-            BigInt(span.startTimeUnixNano || 0);
+          const statusCode = span.status?.code;
+          const durationNs = BigInt(span.endTimeUnixNano || 0) - BigInt(span.startTimeUnixNano || 0);
+          const durationMs = Number(durationNs) / 1e6;
 
-          console.log(
-            `   Service: [${serviceName}] | Span: "${name}" | TraceID: ${traceId} | Duration: ${Number(durationNs) / 1e6}ms`,
-          );
+          // Check for OTLP Error (Code 2 = ERROR, or string)
+          const hasError = statusCode === 2 || statusCode === "STATUS_CODE_ERROR" || !!span.status?.message;
 
-          if (statusCode === 3 || statusCode === "STATUS_CODE_ERROR") {
-            console.error(
-              `🚨 [ERROR DETECTED] Service: ${serviceName} | Span: "${name}" | TraceID: ${traceId}`,
-            );
+          // Store trace for Frontend consumption
+          const existing = traceStore.find((t) => t.traceId === traceId);
+          if (!existing) {
+            traceStore.unshift({
+              traceId,
+              name,
+              service: serviceName,
+              durationMs,
+              hasError,
+              spans: [{ name, durationPct: 100, hasError }]
+            });
+            if (traceStore.length > 50) traceStore.pop(); // keep last 50
+          }
 
-            // Extract span-level attributes array
+          if (hasError) {
             const spanAttributes = span.attributes || [];
-
-            // Extract error message from span status or attributes
             const errorMessage =
               span.status?.message ||
-              spanAttributes.find((a: any) => a.key === "error.message")?.value
-                ?.stringValue ||
+              spanAttributes.find((a: any) => a.key === "error.message")?.value?.stringValue ||
               "Unhandled Application Error";
 
-            // Push structured error context to the batch array
             errorSpansToAnalyze.push({
               traceId,
               spanId,
@@ -82,22 +81,18 @@ app.post("/v1/traces", (req: Request, res: Response) => {
               name,
               serviceName,
               statusCode,
-              durationMs: Number(durationNs) / 1e6,
+              durationMs,
               errorMessage,
-              timestamp: new Date(
-                Number(BigInt(span.startTimeUnixNano || 0) / BigInt(1e6)),
-              ).toISOString(),
+              timestamp: new Date().toISOString(),
             });
           }
         }
       }
     }
 
-    // Dispatch background payload if error spans were detected in this batch
+    // Forward errors to AI Engine
     if (errorSpansToAnalyze.length > 0) {
-      console.log("Sending payload to api for analysis")
-      const AI_ENGINE_URL =
-        process.env.AI_ENGINE_URL || "http://localhost:5000/api/analyze";
+      const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://localhost:5000/api/analyze";
 
       fetch(AI_ENGINE_URL, {
         method: "POST",
@@ -107,29 +102,14 @@ app.post("/v1/traces", (req: Request, res: Response) => {
           serviceName: errorSpansToAnalyze[0].serviceName,
           errorSpans: errorSpansToAnalyze,
         }),
-      })
-      .then((res) => console.log(` AI Engine responded with HTTP ${res.status}`))
-      .catch((err) => {
-        console.error(
-          "❌ Failed to dispatch error payload to AI engine:",
-          err.message,
-        );
-      });
+      }).catch((err) => console.error(" Failed to contact AI engine:", err.message));
     }
 
-    // Always respond with standard OTLP HTTP success
     return res.status(200).json({ partialSuccess: {} });
   } catch (err: any) {
-    console.error("❌ Error processing incoming trace:", err.message);
-    return res
-      .status(500)
-      .json({ error: "Internal server error parsing spans" });
+    console.error(" Trace processing error:", err.message);
+    return res.status(500).json({ error: "Internal server error parsing spans" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(` ZeroTrace Collector running on http://localhost:${PORT}`);
-  console.log(
-    `📥 Listening for OTLP HTTP traces at http://localhost:${PORT}/v1/traces`,
-  );
-});
+app.listen(PORT, () => console.log(`ZeroTrace Collector running on http://localhost:${PORT}`));
