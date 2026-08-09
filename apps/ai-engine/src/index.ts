@@ -8,8 +8,13 @@ dotenv.config()
 const port = process.env.PORT || 5000;
 const app = express();
 
-app.use(cors());
-app.options("*", cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+  }),
+);
 app.use(express.json());
 
 const groq = new Groq({
