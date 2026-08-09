@@ -2,14 +2,14 @@ project:
   name: zerotrace
 
 services:
-  - name: collector
+  - hostname: collector
     type: nodejs@20
     build:
       base: nodejs@20
       buildCommands:
-        - cd collector && npm ci && npm run build || true
+        - cd apps/collector && npm ci && npm run build || true
       deployFiles:
-        - collector
+        - apps/collector
         - package.json
     run:
       base: nodejs@20
@@ -17,16 +17,16 @@ services:
         - port: 8080
           http:
             public: true
-      start: cd collector && npx ts-node index.ts
+      start: cd apps/collector && npx ts-node index.ts
 
-  - name: ai-engine
+  - hostname: ai-engine
     type: nodejs@20
     build:
       base: nodejs@20
       buildCommands:
-        - cd ai-engine && npm ci && npm run build || true
+        - cd apps/ai-engine && npm ci && npm run build || true
       deployFiles:
-        - ai-engine
+        - apps/ai-engine
         - package.json
     run:
       base: nodejs@20
@@ -34,18 +34,18 @@ services:
         - port: 5000
           http:
             public: true
-      start: cd ai-engine && npx ts-node index.ts
+      start: cd apps/ai-engine && npx ts-node index.ts
 
-  - name: sample-app
+  - hostname: target
     type: nodejs@20
     envSecrets:
       COLLECTOR_URL: "http://collector:8080/v1/traces"
     build:
       base: nodejs@20
       buildCommands:
-        - cd sample && npm ci && npm run build || true
+        - cd apps/target && npm ci && npm run build || true
       deployFiles:
-        - sample
+        - apps/target
         - package.json
     run:
       base: nodejs@20
@@ -53,23 +53,23 @@ services:
         - port: 4000
           http:
             public: true
-      start: cd sample && npx ts-node index.ts
+      start: cd apps/sample && npx ts-node index.ts
 
-  - name: frontend
+  - hostname: fe
     type: nodejs@20
     build:
       base: nodejs@20
       buildCommands:
-        - cd frontend && npm ci && npm run build
+        - cd apps/fe && npm ci && npm run build
       deployFiles:
-        - frontend/.next
-        - frontend/public
-        - frontend/package.json
-        - frontend/node_modules
+        - apps/fe/.next
+        - apps/fe/public
+        - apps/fe/package.json
+        - apps/fe/node_modules
     run:
       base: nodejs@20
       ports:
         - port: 3000
           http:
             public: true
-      start: cd frontend && npm start
+      start: cd apps/fe && npm start
