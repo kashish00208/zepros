@@ -35,7 +35,7 @@ app.post("/api/signup", async (req: Request, res: Response) => {
     console.log(`\n [SignUp] Attempting registration for: ${email}`);
 
     if (errorType === "db_timeout") {
-      console.log("⏳ Simulating DB latency spike...");
+      console.log(" Simulating DB latency spike...");
       await new Promise((resolve) => setTimeout(resolve, 3000));
       throw new Error(
         "DATABASE_ERROR: Connection pool exhausted while attempting to query 'users' table."
@@ -66,5 +66,5 @@ app.post("/api/signup", async (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Target Auth App running on http://localhost:${PORT}`);
+  console.log(` Target Auth App running on http://localhost:${PORT}`);
 });

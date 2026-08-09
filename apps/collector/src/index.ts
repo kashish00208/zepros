@@ -126,7 +126,7 @@ app.post("/v1/traces", (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 ZeroTrace Collector running on http://localhost:${PORT}`);
+  console.log(` ZeroTrace Collector running on http://localhost:${PORT}`);
   console.log(
     `📥 Listening for OTLP HTTP traces at http://localhost:${PORT}/v1/traces`,
   );
