@@ -1,62 +1,5 @@
-project:
-  name: zerotrace
-
-services:
-  - hostname: collector
-    type: nodejs@20
-    build:
-      base: nodejs@20
-      buildCommands:
-        - cd apps/collector && npm ci && npm run build || true
-      deployFiles:
-        - apps/collector
-        - package.json
-    run:
-      base: nodejs@20
-      ports:
-        - port: 8080
-          http:
-            public: true
-      start: cd apps/collector && npx ts-node index.ts
-
-  - hostname: ai-engine
-    type: nodejs@20
-    build:
-      base: nodejs@20
-      buildCommands:
-        - cd apps/ai-engine && npm ci && npm run build || true
-      deployFiles:
-        - apps/ai-engine
-        - package.json
-    run:
-      base: nodejs@20
-      ports:
-        - port: 5000
-          http:
-            public: true
-      start: cd apps/ai-engine && npx ts-node index.ts
-
-  - hostname: target
-    type: nodejs@20
-    envSecrets:
-      COLLECTOR_URL: "http://collector:8080/v1/traces"
-    build:
-      base: nodejs@20
-      buildCommands:
-        - cd apps/target && npm ci && npm run build || true
-      deployFiles:
-        - apps/target
-        - package.json
-    run:
-      base: nodejs@20
-      ports:
-        - port: 4000
-          http:
-            public: true
-      start: cd apps/sample && npx ts-node index.ts
-
-  - hostname: fe
-    type: nodejs@20
+zerops:
+  - setup: frontend
     build:
       base: nodejs@20
       buildCommands:
@@ -73,3 +16,51 @@ services:
           http:
             public: true
       start: cd apps/fe && npm start
+
+  - setup: collector
+    build:
+      base: nodejs@20
+      buildCommands:
+        - cd apps/collector && npm ci && npm run build || true
+      deployFiles:
+        - apps/collector
+        - package.json
+    run:
+      base: nodejs@20
+      ports:
+        - port: 8080
+          http:
+            public: true
+      start: cd apps/collector && npx ts-node index.ts
+
+  - setup: aiengine
+    build:
+      base: nodejs@20
+      buildCommands:
+        - cd apps/ai-engine && npm ci && npm run build || true
+      deployFiles:
+        - apps/ai-engine
+        - package.json
+    run:
+      base: nodejs@20
+      ports:
+        - port: 5000
+          http:
+            public: true
+      start: cd apps/ai-engine && npx ts-node index.ts
+
+  - setup: sampleapp
+    build:
+      base: nodejs@20
+      buildCommands:
+        - cd apps/sample && npm ci && npm run build || true
+      deployFiles:
+        - apps/sample
+        - package.json
+    run:
+      base: nodejs@20
+      ports:
+        - port: 4000
+          http:
+            public: true
+      start: cd apps/sample && npx ts-node index.ts
