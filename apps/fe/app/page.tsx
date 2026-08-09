@@ -33,13 +33,13 @@ export default function ZeroTraceDashboard() {
   const [loadingAi, setLoadingAi] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  const COLLECTOR_URL = process.env.NEXT_PUBLIC_COLLECTOR_URL || 'http://collector:8080';
-  const AI_URL = process.env.NEXT_PUBLIC_AI_URL || 'http://ai-engine:8081';
+  const COLLECTOR_URL ='http://collector:8080';
+  const AI_URL = 'http://ai-engine:5000';
 
   const fetchTraces = async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch(`${COLLECTOR_URL}/api/traces`);
+      const res = await fetch(`http://localhost:8080/v1/traces`);
       const data = await res.json();
       setTraces(data);
     } catch (err) {
@@ -61,7 +61,7 @@ export default function ZeroTraceDashboard() {
     setAiAnalysis('');
 
     try {
-      const res = await fetch(`${AI_URL}/api/analyze`, {
+      const res = await fetch(`http://localhost:8080/v1/traces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ trace }),

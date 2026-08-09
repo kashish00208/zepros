@@ -1,52 +1,159 @@
-## ZeroTrace
+# ZeroTrace
 
-ZeroTrace is a native observability and root-cause analysis engine for multi-service apps on Zerops.
-Instead of just rendering basic graphs, ZeroTrace:
+ZeroTrace is a real-time distributed tracing and automated AI Root Cause Analysis (RCA) platform built on OpenTelemetry standards.
 
-1. Collects distributed OpenTelemetry traces across frontend, backend, and database services.
+---
 
-2. Ingests Zerops' internal container runtime metrics (CPU/RAM scaling events, private network latency).
+## Overview Architecture
 
-3. Automates Root Cause Analysis (RCA): When a request fails or spikes in latency, ZeroTrace correlates the trace span directly with Zerops container stats and application logs to pinpoint the exact failing line of code, slow query, or memory bottleneck.
+```
+                                 +-------------------------+
+                                 |   Target Services /     |
+                                 |   Applications          |
+                                 +------------+------------+
+                                              |
+                                              | OTLP HTTP Traces (/v1/traces)
+                                              v
+                                 +------------+------------+
+                                 |    ZeroTrace Collector  |
+                                 |    (Port 8080)          |
+                                 +------+-----------+------+
+                                        |           |
+               GET /api/traces          |           | POST /api/analyze (Errors)
+            +---------------------------+           +---------------------------+
+            |                                                                   |
+            v                                                                   v
++-----------+-------------+                                         +-----------+-------------+
+|    Next.js Dashboard    |                                         |     AI RCA Engine       |
+|    (Port 3000)          |                                         |     (Port 5000)         |
++-------------------------+                                         +-------------------------+
 
-3+ Service Architecture on Zerops
-Zerops private VXLAN networking keeps internal traffic ultra-fast and secure. Your services will communicate privately using hostnames:
+```
 
-## Breakdown of Services:
+---
 
-1. zerotrace-frontend (Next.js + Tailwind): Interactive flamegraph trace viewer, service dependency graph, real-time log stream, and AI diagnostic reports.
+## Core Components
 
-2. zerotrace-collector (Go Backend): High-performance ingestion engine running inside the Zerops private network. Accepts OpenTelemetry trace spans over gRPC/HTTP and polls Zerops stats/logs APIs.
+* **Collector (`/collector`)**: Express TypeScript server exposing OTLP/HTTP endpoints for span ingestion, in-memory aggregation, and error span forwarding.
+* **AI Engine (`/ai-engine`)**: Diagnostic service analyzing failed spans and generating automated root-cause summaries.
+* **Target Auth App (`/sample`)**: Demonstrative Node.js service integrated with OpenTelemetry Node SDK.
+* **Dashboard (`/frontend`)**: Next.js client monitoring live traces, waterfall latency bars, and AI diagnostic results.
 
-3. zerotrace-ai-engine (Python or Node.js): Triggered on error spans. Analyzes trace context + logs + git commit diffs to explain why the failure happened and draft a fix.
+---
 
-4. zerotrace-db (Managed PostgreSQL on Zerops): Persists spans, traces, system metrics, and diagnostic logs.
+## Environment Variables Configuration
 
-3+ Service Architecture on Zerops
-Zerops private VXLAN networking keeps internal traffic ultra-fast and secure. Your services will communicate privately using hostnames:
+Create appropriate configuration files for each component before running the environment.
 
-                            [ Public Internet ]
-                                    │
-                            (Zerops L7 Router)
-                                    │
-                        ┌──────────┴──────────┐
-                        │                     │
-            ┌────────────▼──────────┐ ┌────────▼────────────────┐
-            │ zerotrace-frontend    │ │ target-app-service      │
-            │ (Next.js Dashboard)   │ │ (Sample Microservice)   │
-            └────────────┬──────────┘ └────────┬────────────────┘
-                        │                     │ (OTLP Traces)
-                        │ (Private HTTP)      │
-                        ▼                     │
-            ┌──────────────────────────────────▼────────────────┐
-            │ zerotrace-collector (Go Backend Engine)          │
-            │ - OTLP Trace/Metric Receiver                      │
-            │ - Correlates Traces + Container Metrics + Logs    │
-            └────────────┬──────────────────────────────────────┘
-                        │
-                ┌─────────┴─────────────────────┐
-                │                               │
-        ┌────────▼────────────────┐   ┌──────────▼───────────────┐
-        │ zerotrace-ai-engine     │   │ zerotrace-db             │
-        │ (Python/Node RCA Agent) │   │ (PostgreSQL on Zerops)   │
-        └─────────────────────────┘   └──────────────────────────┘
+### Collector (`collector/.env`)
+
+```env
+PORT=8080
+AI_ENGINE_URL=http://localhost:5000/api/analyze
+
+```
+
+### AI Engine (`ai-engine/.env`)
+
+```env
+PORT=5000
+
+```
+
+### Target Service (`sample/.env`)
+
+```env
+PORT=4000
+COLLECTOR_URL=http://localhost:8080/v1/traces
+
+```
+
+### Next.js Frontend (`frontend/.env.local`)
+
+```env
+NEXT_PUBLIC_COLLECTOR_URL=http://localhost:8080
+NEXT_PUBLIC_AI_URL=http://localhost:5000
+
+```
+
+---
+
+## Local Development Setup
+
+Run each service across separate terminal instances.
+
+### 1. Collector Service
+
+```bash
+cd collector
+npm install
+npx ts-node index.ts
+
+```
+
+### 2. AI Diagnostic Engine
+
+```bash
+cd ai-engine
+npm install
+npx ts-node index.ts
+
+```
+
+### 3. Sample Instrumente Application
+
+```bash
+cd sample
+npm install
+npx ts-node index.ts
+
+```
+
+### 4. Frontend Dashboard
+
+```bash
+cd frontend
+npm install
+npm run dev
+
+```
+
+---
+
+## API Endpoints Reference
+
+### Collector Service (Port 8080)
+
+* `GET /health` - Service health status check.
+* `GET /api/traces` - Returns in-memory trace buffer for dashboard consumption.
+* `POST /v1/traces` - Standard OTLP/HTTP receiver endpoint for span batches.
+
+### AI Engine (Port 5000)
+
+* `POST /api/analyze` - Receives error context payload and returns diagnostic analysis.
+
+### Target Auth App (Port 4000)
+
+* `POST /api/signup` - Test route supporting error simulation (`errorType: "db_timeout"` or `"Duplicate"`).
+
+---
+
+## Testing Trace Ingestion
+
+### Success Scenario
+
+```bash
+curl -X POST http://localhost:4000/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com", "name":"Jane Doe"}'
+
+```
+
+### Error Simulation Scenario (Triggers AI RCA)
+
+```bash
+curl -X POST http://localhost:4000/api/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com", "name":"Jane Doe", "errorType":"db_timeout"}'
+
+```
