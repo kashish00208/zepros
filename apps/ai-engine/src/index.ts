@@ -7,6 +7,11 @@ const port = 5000;
 const app = express();
 app.use(express.json());
 
-app.post("/ai/evaluate", async (req: Request, res: Response) => {
-    console.log("🤖 [AI Engine] Received error payload:", JSON.stringify(req.body, null, 2));
+app.post("/api/analyze", async (req: Request, res: Response) => {
+    console.log(" [AI Engine] Received error payload:", JSON.stringify(req.body, null, 2));
+
 });
+
+app.listen(port,()=>{
+    console.log("API Engine to analyze and give feedback running on port 5000 ")
+})

@@ -93,6 +93,7 @@ app.post("/v1/traces", (req: Request, res: Response) => {
 
     // Dispatch background payload if error spans were detected in this batch
     if (errorSpansToAnalyze.length > 0) {
+      console.log("Sending payload to api for analysis")
       const AI_ENGINE_URL =
         process.env.AI_ENGINE_URL || "http://localhost:5000/api/analyze";
 
@@ -104,7 +105,9 @@ app.post("/v1/traces", (req: Request, res: Response) => {
           serviceName: errorSpansToAnalyze[0].serviceName,
           errorSpans: errorSpansToAnalyze,
         }),
-      }).catch((err) => {
+      })
+      .then((res) => console.log(` AI Engine responded with HTTP ${res.status}`))
+      .catch((err) => {
         console.error(
           "❌ Failed to dispatch error payload to AI engine:",
           err.message,
