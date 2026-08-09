@@ -1,0 +1,75 @@
+project:
+  name: zerotrace
+
+services:
+  - name: collector
+    type: nodejs@20
+    build:
+      base: nodejs@20
+      buildCommands:
+        - cd collector && npm ci && npm run build || true
+      deployFiles:
+        - collector
+        - package.json
+    run:
+      base: nodejs@20
+      ports:
+        - port: 8080
+          http:
+            public: true
+      start: cd collector && npx ts-node index.ts
+
+  - name: ai-engine
+    type: nodejs@20
+    build:
+      base: nodejs@20
+      buildCommands:
+        - cd ai-engine && npm ci && npm run build || true
+      deployFiles:
+        - ai-engine
+        - package.json
+    run:
+      base: nodejs@20
+      ports:
+        - port: 5000
+          http:
+            public: true
+      start: cd ai-engine && npx ts-node index.ts
+
+  - name: sample-app
+    type: nodejs@20
+    envSecrets:
+      COLLECTOR_URL: "http://collector:8080/v1/traces"
+    build:
+      base: nodejs@20
+      buildCommands:
+        - cd sample && npm ci && npm run build || true
+      deployFiles:
+        - sample
+        - package.json
+    run:
+      base: nodejs@20
+      ports:
+        - port: 4000
+          http:
+            public: true
+      start: cd sample && npx ts-node index.ts
+
+  - name: frontend
+    type: nodejs@20
+    build:
+      base: nodejs@20
+      buildCommands:
+        - cd frontend && npm ci && npm run build
+      deployFiles:
+        - frontend/.next
+        - frontend/public
+        - frontend/package.json
+        - frontend/node_modules
+    run:
+      base: nodejs@20
+      ports:
+        - port: 3000
+          http:
+            public: true
+      start: cd frontend && npm start
