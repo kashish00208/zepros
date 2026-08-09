@@ -15,6 +15,8 @@ app.post("/v1/traces", (req: Request, res: Response) => {
   try {
     const { resourceSpans } = req.body;
 
+    console.log(resourceSpans)
+
     if (!resourceSpans || !Array.isArray(resourceSpans)) {
       return res.status(400).json({
         error: "Invalid OTLP trace payload. Expected 'resourceSpans' array.",

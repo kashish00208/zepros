@@ -1,5 +1,8 @@
 import express, { Request, Response } from "express";
 import Groq from "groq-sdk";
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const port = process.env.PORT || 5000;
 const app = express();

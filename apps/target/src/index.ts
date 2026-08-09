@@ -4,9 +4,11 @@ import { NodeSDK } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import dotenv from 'dotenv'
+dotenv.config()
 
 const COLLECTOR_URL =
-  process.env.COLLECTOR_URL || "http://localhost:8080/v1/traces";
+  process.env.COLLECTOR_URL!;
 
 const sdk = new NodeSDK({
   resource: resourceFromAttributes({
